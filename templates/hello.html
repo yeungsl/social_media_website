@@ -1,0 +1,16 @@
+<!-- implementing hello.html -->
+<!DOCTYPE html>
+<head>
+  <title> Hello page</title>
+  {% if message%}
+  <h1>{{message}}</h1>
+  {% endif %}
+</head>
+<body>
+  {% if name or photos %}
+  <p> name: {{name}}</p>
+  
+  {% endif %}
+<a href="/upload"> Upload </a>
+<a href="/register" > Register</a>
+</body>

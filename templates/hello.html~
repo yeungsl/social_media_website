@@ -1,0 +1,11 @@
+<!-- implementing hello.html -->
+<!DOCTYPE html>
+<head>
+  <title> Hello page</title>
+  <h1>Welcome</h1>
+</head>
+<body>
+  {% if message%}
+  <p>{message}</p>
+  {% endif %}
+</body>
