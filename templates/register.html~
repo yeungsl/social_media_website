@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<head>
+  <title> Register Page</title>
+</head>
+<body>
+  <p>Register to become a new user</p>
+  <p>user name: <input type="text" name='email'/></p>
+  <p>password: <input type="text" name='password'/></p>
+  <p><input type="submi" name="Register"/></p>
+</body>
