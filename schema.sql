@@ -7,6 +7,7 @@ DROP TABLE Albums CASCADE;
 DROP TABLE Pictures CASCADE;
 DROP TABLE Tags CASCADE;
 DROP TABLE Comments CASCADE;
+DROP TABLE Likes CASCADE;
 
 CREATE TABLE Users (
   `user_id` int(11) NOT NULL AUTO_INCREMENT,
@@ -71,6 +72,12 @@ CREATE TABLE Comments(
   CONSTRAINT text_chk CHECK(LENGTH(`text`)>0)
 );
 
+CREATE TABLE Likes(
+  `picture_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  CONSTRAINT pictureidthree_fk FOREIGN KEY (`picture_id`) REFERENCES Pictures(`picture_id`),
+  CONSTRAINT useridtwo_fk FOREIGN KEY (`user_id`) REFERENCES Users(`user_id`) 
+);
 
 INSERT INTO Users (user_id, first_name, last_name, date_of_birth, email, hometown, gender, password) VALUES ('1111111111', 'testy', 'test', '1995-02-02', 'test@bu.edu', 'geogia', 'male', 'test');
 INSERT INTO Users (user_id, first_name, last_name, date_of_birth, email, hometown, gender, password) VALUES ('1111111112', 'tester', 'testee', '1996-02-02', 'test2@bu.edu', 'geogia', 'female', 'test');
@@ -79,3 +86,4 @@ INSERT INTO Albums (name, owner_id, date_created) VALUES ('vahla', '1111111111',
 INSERT INTO Pictures (album_id, imgdata, caption) VALUES ('1', 'path/to/image', 'testcap');
 INSERT INTO Tags (picture_id, description) VALUES ('1', 'word');
 INSERT INTO Comments (owner_id, text, date_left, picture_id) VALUES ('1111111111', 'LOL', '2016-07-08', '1');
+INSERT INTO Likes (picture_id, user_id) VALUES ('1', '1111111111');
