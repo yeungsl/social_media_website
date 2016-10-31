@@ -159,12 +159,28 @@ def isEmailUnique(email):
 		return False
 	else:
 		return True
+
+def getUserinfoFromEmail(email):
+	cursor = conn.cursor()
+	cursor.execute("SELECT 	first_name, last_name, date_of_birth, hometown, gender FROM Users WHERE email = '{0}'".format(email))
+	return cursor.fetchall()[0]
+
+def getFriendsFromEmail(email):
+	cursor = conn.cursor()
+	cursor.execute("SELECT U2.first_name, U2.last_name, U2.email FROM users U1, users U2, friends F WHERE U1.user_id = F.user_id AND U2.user_id = F.friend_id AND U1.email = '{0}'".format(email))
+	return cursor.fetchall()
 #end login code
 
 @app.route('/profile')
 @flask_login.login_required
 def protected():
-	return render_template('hello.html', name=flask_login.current_user.id, message="Here's your profile")
+	uinfo = getUserinfoFromEmail(flask_login.current_user.id)
+	print uinfo
+	flist = getFriendsFromEmail(flask_login.current_user.id)
+	fnum = len(flist)
+	print flist
+	print fnum
+	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, message="Here's your profile")
 
 #begin photo uploading code
 # photos uploaded using base64 encoding so they can be directly embeded in HTML 
