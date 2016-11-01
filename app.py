@@ -169,6 +169,11 @@ def getFriendsFromEmail(email):
 	cursor = conn.cursor()
 	cursor.execute("SELECT U2.first_name, U2.last_name, U2.email FROM users U1, users U2, friends F WHERE U1.user_id = F.user_id AND U2.user_id = F.friend_id AND U1.email = '{0}'".format(email))
 	return cursor.fetchall()
+
+def getActivelist():
+	cursor = conn.cursor()
+	cursor.execute("SELECT email, count(*) FROM users U, albums A, pictures P WHERE U.user_id = A.owner_id and P.album_id = A.album_id GROUP BY user_id ORDER BY count(*) desc")
+	return cursor.fetchall()
 #end login code
 
 @app.route('/profile')
@@ -180,7 +185,9 @@ def protected():
 	fnum = len(flist)
 	print flist
 	print fnum
-	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, message="Here's your profile")
+	activeList = getActivelist()
+	print activeList
+	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, actlist=activeList, message="Here's your profile")
 
 #begin photo uploading code
 # photos uploaded using base64 encoding so they can be directly embeded in HTML 
