@@ -192,7 +192,7 @@ def getFriendsFromEmail(email):
 
 def getAlbumsFromEmail(email):
 	cursor = conn.cursor()
-	cursor.execute("SELECT A.name, A.date_created FROM albums A, users U WHERE A.owner_id = U.user_id AND U.email = '{0}'".format(email))
+	cursor.execute("SELECT A.name, A.date_created, A.album_id FROM albums A, users U WHERE A.owner_id = U.user_id AND U.email = '{0}'".format(email))
 	return cursor.fetchall()
 
 def getActivelist():
@@ -233,7 +233,11 @@ def protected():
 	print activeList
 	alist = getAlbumsFromEmail(flask_login.current_user.id)
 	anum = len(alist)
-	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, anum=anum, alist=alist, actlist=activeList, message="Here's your profile")
+	aplist = {}
+	for album in alist:
+		aplist[album] = getUsersPhotos(album[2])
+	print aplist
+	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, anum=anum, alist=aplist, actlist=activeList, message="Here's your profile")
 
 @app.route('/friend', methods=['GET'])
 @flask_login.login_required
@@ -357,6 +361,19 @@ def delete_albums():
 	else:
 		print message
 		return render_template('upload.html', message=message)
+
+@app.route('/delete_pictures/<pid>/<aid>', methods=['POST'])
+@flask_login.login_required
+def delete_pictures(pid, aid):
+	print pid
+	info = getUserinfoFromEmail(flask_login.current_user.id)[0]
+	cursor = conn.cursor()
+	cursor.execute("DELETE FROM pictures WHERE picture_id = '{0}'".format(pid))
+	conn.commit()
+	return render_template('hello.html', name=info, message='The picture is deleted', photos=getUsersPhotos(aid))
+
+
+
 
 @app.route('/send/<filename>')
 @flask_login.login_required
