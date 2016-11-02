@@ -73,7 +73,7 @@ CREATE TABLE Comments(
 
 CREATE TABLE Likes(
   `picture_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
+  `user_id` int(11),
   CONSTRAINT pictureidthree_fk FOREIGN KEY (`picture_id`) REFERENCES Pictures(`picture_id`),
   CONSTRAINT useridtwo_fk FOREIGN KEY (`user_id`) REFERENCES Users(`user_id`) 
 );

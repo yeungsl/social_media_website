@@ -229,6 +229,11 @@ def getCommentsFromPhotos(pid):
 	cursor.execute("SELECT comment_id, text, date_left FROM comments WHERE picture_id = '{0}'".format(pid))
 	return cursor.fetchall()	
 
+def getLikesFromPhotos(pid):
+	cursor = conn.cursor()
+	cursor.execute("SELECT count(*) FROM likes WHERE picture_id = '{0}'".format(pid))
+	return cursor.fetchall()
+
 #end login code
 
 @app.route('/profile')
@@ -250,13 +255,16 @@ def protected():
 		p = getUsersPhotos(album[2])
 		aplist[album] = p
 		for photo in p:
+			l = getLikesFromPhotos(photo[1])
 			c = getCommentsFromPhotos(photo[1])
 			pclist[photo] = c
+			pclist[photo] += l 
 	print aplist
 	print pclist
 	tags = privateTags(flask_login.current_user.id)
 	print tags
-	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, anum=anum, alist=aplist, pclist=pclist, actlist=activeList, tags=tags, private=1, message="Here's your profile")
+	yml_list = you_may_also_like(tags, getUserIdFromEmail(flask_login.current_user.id))
+	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, anum=anum, alist=aplist, pclist=pclist, actlist=activeList, tags=tags, private=1, photos=yml_list, message="Here's your profile")
 
 @app.route('/friend', methods=['GET'])
 @flask_login.login_required
@@ -446,6 +454,28 @@ def search_tags():
 	plist = set(plist)
 	return render_template('hello.html', message='Related pictures', photos=plist)
 
+@app.route('/tags_recom', methods=['POST'])
+def tags_recom():
+	try:
+		tags = request.form.get('tags')
+	except:
+		print "couldn't find all tokens" #this prints to shell, end users will not see this (all print statements go to shell)
+		return flask.redirect(flask.url_for('/'))
+	ws = re.split(' ', tags)
+	print ws
+	taglist = []
+	for t in gatherTags():
+		taglist += [t[0]]
+	T = []
+	for x in ws:
+		print x 
+		if x in taglist:
+			T += [x]
+	print T
+	tags = tag_recommendation(T)
+	return render_template('hello.html', message='Recommanded pictures', tags=tags)
+
+
 @app.route('/delete_pictures/<pid>/<aid>', methods=['POST'])
 @flask_login.login_required
 def delete_pictures(pid, aid):
@@ -487,11 +517,66 @@ def comment_pictures(pid):
 	except:
 		cursor.execute("INSERT INTO Comments (text, date_left, picture_id) VALUES ('{0}', '{1}', '{2}')".format(comment, cdate, pid))
 		conn.commit()
-		return render_template('hello.html', message='comment successful')
+		return render_template('hello.html', message='comment successful') #redirect to home
+	if addCommentSelf(uid, pid):
+		return render_template('hello.html', message='cannot comment photo of your own')
 	cursor.execute("INSERT INTO Comments (owner_id, text, date_left, picture_id) VALUES ('{0}', '{1}', '{2}', '{3}')".format(uid, comment, cdate, pid))
 	conn.commit()
 	info = getUserinfoFromEmail(flask_login.current_user.id)
-	return render_template('hello.html', name=info[0], message='comment successful, login to see comments')
+	return render_template('hello.html', name=info[0], message='comment successful') #redirect to home
+
+def addCommentSelf(uid, pid):
+	cursor = conn.cursor()
+	if cursor.execute("SELECT picture_id  FROM pictures P, albums A WHERE A.owner_id = '{0}' AND A.album_id = P.album_id AND P.picture_id = '{1}'".format(uid, pid)): 
+		#this means there are greater than zero entries with that email
+		return True
+	else:
+		return False
+
+
+@app.route('/like_pictures/<pid>', methods=['POST'])
+def like_pictures(pid):
+	cursor = conn.cursor()
+	try:
+		uid = getUserIdFromEmail(flask_login.current_user.id)
+	except:
+		cursor.execute("INSERT INTO Likes (picture_id) VALUES ('{0}')".format(pid))
+		conn.commit()
+		return render_template('hello.html', message='Thanks for the like')
+	cursor.execute("INSERT INTO Likes (picture_id, user_id) VALUES ('{0}', '{1}')".format(pid, uid))
+	conn.commit()
+	info = getUserinfoFromEmail(flask_login.current_user.id)
+	return render_template('hello.html', name=info[0], message='Thanks for the like')
+
+def you_may_also_like(tags, uid):
+	query_head = "SELECT P.imgdata, T.picture_id FROM Pictures P, Tags T, Albums A WHERE A.owner_id = '{0}' AND A.album_id = P.album_id AND P.picture_id = T.picture_id AND (".format(uid)
+	query_tail = ") GROUP BY T.picture_id ORDER BY Count(T.description) DESC"
+	for tag in tags:
+		if tag == tags[-1]:
+			query_head += "T.description = '{0}'".format(tag[0])
+			break 
+		query_head += "T.description = '{0}' OR ".format(tag[0]) 
+	query = query_head + query_tail
+	print query
+	cursor = conn.cursor()
+	cursor.execute(query)
+	return cursor.fetchall()
+
+def tag_recommendation(tags):
+	pics_head = "( SELECT T2.picture_id FROM Tags T2 WHERE " 
+	badg_head = "( SELECT T3.description FROM Tags T3 WHERE "
+	for tag in tags:
+		if tag == tags[-1]:
+			pics_head += "T2.description = '{0}' GROUP BY T2.picture_id HAVING count(*)>= 1 ) As Temp".format(tag)
+			badg_head += "T3.description = '{0}' GROUP BY description HAVING count(*) >= 1 )".format(tag)
+			break
+		pics_head += "T2.description = '{0}' OR ".format(tag)
+		badg_head += "T3.description = '{0}' OR ". format(tag)
+
+	query = "SELECT description, count(T1.description) AS dnum FROM Tags T1, " + pics_head + " WHERE Temp.picture_id = T1.picture_id AND T1.description NOT IN " + badg_head + " GROUP BY description ORDER BY dnum DESC"
+	cursor = conn.cursor()
+	cursor.execute(query)
+	return cursor.fetchall()
 
 
 #default page  

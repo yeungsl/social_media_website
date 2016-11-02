@@ -39,7 +39,11 @@
                 <form method="post" action="{{ url_for('delete_pictures', pid=photo[1], aid=ap[2]) }}">
                 <input type="submit" value="Delete" />
                 </form>
+                <form method="post" action="{{ url_for('like_pictures', pid=photo[1]) }}">
+                <input type="submit" value="Like" />
+                </form>
                 {% if pclist[photo] %}
+                  <h4>number of likes: {{ pclist[photo][-1][0] }}</h4>
                   <ul>
                   {% for comment in pclist[photo] %}
                     <li><h4>{{ comment[1] }}</h4>  date left: {{ comment[2] }}</li>
@@ -74,6 +78,9 @@
           <input type="text" name="comment" required='true' /><br />
           <input type="submit" value="Comment" />
           </form>
+          <form method="post" action="{{ url_for('like_pictures', pid=photo[1]) }}">
+          <input type="submit" value="Like" />
+          </form>
         </li>
     {% endfor %}
     </ul>
@@ -107,6 +114,16 @@
                 <input type="text" name="words" required='true' /><br />
                 <input type="submit" value="Search" />
             </form>
+
+<div class="title">
+            <h1>Tags Recommandation</h1>
+        </div>
+            <form method="post" action="{{ url_for('tags_recom') }}">
+                <label for="tags">Please enter tags:</label>
+                <input type="text" name="tags" required='true' /><br />
+                <input type="submit" value="Search" />
+            </form>
+
 
 {% if message is none %}
   <p>You should <a href='/login'>login!</a></p>
