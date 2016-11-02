@@ -14,6 +14,7 @@ from flask import Flask, Response, request, render_template, redirect, url_for, 
 from flaskext.mysql import MySQL
 import flask.ext.login as flask_login
 from dateutil.parser import parse
+import datetime
 
 #for image uploading
 from werkzeug import secure_filename
@@ -191,7 +192,7 @@ def getFriendsFromEmail(email):
 
 def getAlbumsFromEmail(email):
 	cursor = conn.cursor()
-	cursor.execute("SELECT A.name FROM albums A, users U WHERE A.owner_id = U.user_id AND U.email = '{0}'".format(email))
+	cursor.execute("SELECT A.name, A.date_created FROM albums A, users U WHERE A.owner_id = U.user_id AND U.email = '{0}'".format(email))
 	return cursor.fetchall()
 
 def getActivelist():
@@ -203,6 +204,20 @@ def getAid(name):
 	cursor = conn.cursor()
 	cursor.execute("SELECT album_id FROM albums WHERE name = '{0}'".format(name))
 	return cursor.fetchall()
+
+def verifyAlbums(aname, cdate):
+	cursor = conn.cursor()
+	cursor.execute("SELECT album_id, owner_id FROM albums WHERE name = '{0}' AND date_created = '{1}'".format(aname, cdate))
+	m = cursor.fetchall()[0]
+	if m[1] != getUserIdFromEmail(flask_login.current_user.id):
+		m = "cannnot delete album from other people"
+		return False, m
+	if m[1] == getUserIdFromEmail(flask_login.current_user.id):
+		return True, m
+	else:
+		m = "There is no such album in the list"
+		return False, m
+
 #end login code
 
 @app.route('/profile')
@@ -216,12 +231,16 @@ def protected():
 	print fnum
 	activeList = getActivelist()
 	print activeList
-	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, actlist=activeList, message="Here's your profile")
+	alist = getAlbumsFromEmail(flask_login.current_user.id)
+	anum = len(alist)
+	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, anum=anum, alist=alist, actlist=activeList, message="Here's your profile")
 
 @app.route('/friend', methods=['GET'])
 @flask_login.login_required
 def friend():
-	return render_template('friend.html')
+	flist = getFriendsFromEmail(flask_login.current_user.id)
+	fnum = len(flist)
+	return render_template('friend.html', num=fnum, list=flist)
 
 @app.route('/friend', methods=['POST'])
 @flask_login.login_required
@@ -297,6 +316,47 @@ def upload_file():
 	else:
 		return render_template('upload.html', num=anum, list=alist)
 #end photo uploading code 
+@app.route('/upload/add_albums', methods=['POST'])
+@flask_login.login_required
+def add_albums():
+	cdate = datetime.datetime.now().date().isoformat()
+	print cdate
+	try:
+		aname=request.form.get('albumName')
+	except:
+		print "couldn't find all tokens" #this prints to shell, end users will not see this (all print statements go to shell)
+		return flask.redirect(flask.url_for('upload'))
+	uid = getUserIdFromEmail(flask_login.current_user.id)
+	info = getUserinfoFromEmail(flask_login.current_user.id)[0]
+	cursor = conn.cursor()
+	cursor.execute("INSERT INTO Albums (name, owner_id, date_created) VALUES ('{0}', '{1}', '{2}')".format(aname, uid, cdate))
+	conn.commit()
+	return render_template('hello.html', name=info, message='New Album set up', albums=getAlbumsFromEmail(flask_login.current_user.id))
+
+@app.route('/upload/delete_albums', methods=['POST'])
+@flask_login.login_required
+def delete_albums():
+	try:
+		cdate = request.form.get('cdate')
+		aname = request.form.get('albumName')
+	except:
+		print "couldn't find all tokens" #this prints to shell, end users will not see this (all print statements go to shell)
+		return flask.redirect(flask.url_for('upload'))
+	t, message = verifyAlbums(aname, cdate)
+	if t:
+		print message
+		info = getUserinfoFromEmail(flask_login.current_user.id)[0]
+		photos = getUsersPhotos(message[0])
+		cursor = conn.cursor()
+		for photo in photos:
+			print photo[1]
+			cursor.execute("DELETE FROM pictures WHERE picture_id = '{0}'".format(photo[1]))
+		cursor.execute("DELETE FROM albums WHERE album_id = '{0}'".format(message[0]))
+		conn.commit()
+		return render_template('hello.html', name=info, message='The Album is deleted', albums=getAlbumsFromEmail(flask_login.current_user.id))
+	else:
+		print message
+		return render_template('upload.html', message=message)
 
 @app.route('/send/<filename>')
 @flask_login.login_required

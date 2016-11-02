@@ -10,7 +10,7 @@
          <h4> you have {{ num }} albums:</h4>
             <ul>
             {% for album in list %}
-                <li>name: {{ album[0] }}</li>
+                <li>name: {{ album[0] }}, date created: {{ album[1] }}</li>
             {% endfor %}
             </ul>
         {% endif %}
@@ -29,14 +29,21 @@
         <div class="ti">
             <h1>Create an album</h1>
         </div>
-            <form method="post" enctype="multipart/form-data" action="/upload">
-                <label for="photo">Select photo:</label>
-                <input type="file" name="photo" required='true' /><br />
-                <label for="caption">Please enter caption:</label>
-                <input type="text" name="caption" required='true' /><br />
+            <form method="post" action="/upload/add_albums">
                 <label for="albumName">Please enter album name:</label>
                 <input type="text" name="albumName" required='true' /><br />
-                <input type="submit" value="Upload" />
+                <input type="submit" value="Create" />
+            </form>
+
+        <div class="ti">
+            <h1>Enter name to delete your albums and photos associated with it</h1>
+        </div>
+            <form method="post" action="/upload/delete_albums">
+                <label for="albumName">Please enter album name:</label>
+                <input type="text" name="albumName" required='true' /><br />
+                 <label for="cdate">Please enter date created:</label>
+                <input type="date" name="cdate" required='true' /><br />
+                <input type="submit" value="Delete" />
             </form>
         <a href='/'>Home</a>
     </body>

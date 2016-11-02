@@ -9,6 +9,14 @@
         {% endfor %}
     {% endif %}
 {% endwith %}
+{% if num %}
+    <h4> you have {{ num }} friends:</h4>
+        <ul>
+        {% for friend in list %}
+            <li>name: {{ friend[0] }} {{ friend[1] }}, email: {{ friend[2] }}</li>
+        {% endfor %}
+        </ul>
+{% endif %}
     <body>
         <div class="title">
             <h1>Find friend by email</h1>
