@@ -1,0 +1,24 @@
+<!-- author sailung yeung yeungsl@bu.edu-->
+<head>
+    <title>Add friends!</title>
+</head>
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        {% for messages in messages%}
+            <h1>{{ messages }}</h1>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+    <body>
+        <div class="title">
+            <h1>Find friend by email</h1>
+        </div>
+        <div id="content">
+            <form method="post" action="{{ url_for('add_friend') }}">
+                <label for="email">Enter email:</label>
+                <input type="email" name="email" /><br />
+                <input type="submit" value="add"/>
+            </form>
+         </div>
+    </body>
+<a href='/'>Home</a>
