@@ -41,7 +41,6 @@ CREATE TABLE Albums(
   CONSTRAINT ownerid_fk FOREIGN KEY(`owner_id`) REFERENCES users(`user_id`)
 );
 
-
 CREATE TABLE Pictures
 (
   `picture_id` int(11) NOT NULL AUTO_INCREMENT,

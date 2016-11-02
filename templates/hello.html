@@ -67,6 +67,35 @@
     </ul>
 {% endif %}
 
+{% if tags%}
+<h2>Here are the most pouplar tags</h2>
+  <ul>
+    {% for tag in tags %}
+        <li>
+          {% if private %}
+          <form method="post" action="{{ url_for('show_tags_private', d=tag[0]) }}">
+          <input type="submit" value="#{{ tag[0] }}" />
+          </form>
+          {% else %}
+          <form method="post" action="{{ url_for('show_tags', d=tag[0]) }}">
+          <input type="submit" value="#{{ tag[0] }}" />
+          </form>
+          {% endif %}
+        </li>
+    {% endfor %}
+    </ul>
+{% endif %}
+
+
+<div class="title">
+            <h1>Search by tags</h1>
+        </div>
+            <form method="post" action="{{ url_for('search_tags') }}">
+                <label for="words">Please enter words:</label>
+                <input type="text" name="words" required='true' /><br />
+                <input type="submit" value="Search" />
+            </form>
+
 {% if message is none %}
   <p>You should <a href='/login'>login!</a></p>
 {% else %}
@@ -74,7 +103,7 @@
 {% endif %}
 
 <ul>
-<li><a href='/upload'>Upload a photo</a> </li> 
+<li><a href='/upload'>Modify photos and albums</a> </li> 
 <li><a href='/logout'>Logout</a></li>
 <li><a href='/friend'>Add friend</a></li>
 <li><a href='/'>Home</a></li>

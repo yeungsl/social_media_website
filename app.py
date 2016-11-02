@@ -15,6 +15,7 @@ from flaskext.mysql import MySQL
 import flask.ext.login as flask_login
 from dateutil.parser import parse
 import datetime
+import re
 
 #for image uploading
 from werkzeug import secure_filename
@@ -218,6 +219,11 @@ def verifyAlbums(aname, cdate):
 		m = "There is no such album in the list"
 		return False, m
 
+def privateTags(email):
+	cursor = conn.cursor()
+	cursor.execute("SELECT description FROM (SELECT picture_id, description FROM tags WHERE picture_id IN( SELECT T2.picture_id FROM tags T2, users U, albums A, pictures P WHERE U.email = '{0}' AND U.user_id = A.owner_id AND A.album_id = P.album_id AND P.picture_id = T2.picture_id))AS Temp GROUP BY description HAVING count(*)>=1 ORDER BY count(*) DESC".format(email))
+	return cursor.fetchall()	
+
 #end login code
 
 @app.route('/profile')
@@ -235,9 +241,12 @@ def protected():
 	anum = len(alist)
 	aplist = {}
 	for album in alist:
-		aplist[album] = getUsersPhotos(album[2])
+		p = getUsersPhotos(album[2])
+		aplist[album] = p
 	print aplist
-	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, anum=anum, alist=aplist, actlist=activeList, message="Here's your profile")
+	tags = privateTags(flask_login.current_user.id)
+	print tags
+	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, anum=anum, alist=aplist, actlist=activeList, tags=tags, private=1, message="Here's your profile")
 
 @app.route('/friend', methods=['GET'])
 @flask_login.login_required
@@ -300,6 +309,7 @@ def upload_file():
 		aid = getAid(request.form.get('albumName'))
 		imgfile = request.files['photo']
 		caption = request.form.get('caption')
+		tag = request.form.get('tag')
 		print caption
 		print aid
 		if not aid:
@@ -313,13 +323,57 @@ def upload_file():
 			cursor.execute("INSERT INTO Pictures (album_id, imgdata, caption) VALUES ('{0}', '{1}', '{2}' )".format(aid, filename, caption))
 			conn.commit()
 			info = getUserinfoFromEmail(flask_login.current_user.id)[0]
-			return render_template('hello.html', name=info, message='Photo uploaded!', photos=getUsersPhotos(aid))
+			p = getUsersPhotos(aid)
+			AddTag(p, tag)
+			return render_template('hello.html', name=info, message='Photo uploaded!', photos=p)
 		else:
 			return render_template('upload.html', message='file choosen cannot be uploaded', num=anum, list=alist)
 	#The method is GET so we return a  HTML form to upload the a photo.
 	else:
 		return render_template('upload.html', num=anum, list=alist)
 #end photo uploading code 
+
+def AddTag(p, tag):
+	pid = p[-1][1]
+	print pid
+	print tag
+	tags = re.split('#|\s', tag)[1:]
+	print tags
+	cursor = conn.cursor()
+	for t in tags:
+		cursor.execute("INSERT INTO Tags (picture_id, description) VALUES('{0}', '{1}')".format(pid, t))
+	conn.commit()
+
+def gatherTags():
+	cursor = conn.cursor()
+	cursor.execute("SELECT description FROM tags GROUP BY description HAVING count(*)>=1 ORDER BY count(*) DESC")
+	return cursor.fetchall()
+
+def getTagsPhotos(d):
+	cursor = conn.cursor()
+	cursor.execute("SELECT picture_id FROM tags WHERE description = '{0}'".format(d))
+	pids = cursor.fetchall()
+	print pids
+	photos = list()
+	for pid in pids:
+		cursor.execute("SELECT imgdata, picture_id, caption FROM Pictures WHERE picture_id = '{0}'".format(pid[0]))
+		photos += cursor.fetchall()
+	print photos
+	return photos
+
+def getTagsPhotosPrivate(d, uid):
+	print uid
+	cursor = conn.cursor()
+	cursor.execute("SELECT T.picture_id FROM tags T, albums A, pictures P WHERE T.description = '{0}' AND A.owner_id = '{1}' AND P.picture_id = T.picture_id AND A.album_id = P.album_id ".format(d, uid))
+	pids = cursor.fetchall()
+	print pids
+	photos = list()
+	for pid in pids:
+		cursor.execute("SELECT imgdata, picture_id, caption FROM Pictures WHERE picture_id = '{0}'".format(pid[0]))
+		photos += cursor.fetchall()
+	print photos
+	return photos
+
 @app.route('/upload/add_albums', methods=['POST'])
 @flask_login.login_required
 def add_albums():
@@ -362,6 +416,26 @@ def delete_albums():
 		print message
 		return render_template('upload.html', message=message)
 
+@app.route('/search_tags', methods=['POST'])
+def search_tags():
+	try:
+		words = request.form.get('words')
+	except:
+		print "couldn't find all tokens" #this prints to shell, end users will not see this (all print statements go to shell)
+		return flask.redirect(flask.url_for('/'))
+	ws = re.split(' ', words)
+	print ws
+	T = []
+	for x in gatherTags():
+		T += [x[0]]
+	plist = list()
+	print T
+	for tag in ws:
+		if tag in T:
+			plist += getTagsPhotos(tag)
+	plist = set(plist)
+	return render_template('hello.html', message='Related pictures', photos=plist)
+
 @app.route('/delete_pictures/<pid>/<aid>', methods=['POST'])
 @flask_login.login_required
 def delete_pictures(pid, aid):
@@ -372,8 +446,16 @@ def delete_pictures(pid, aid):
 	conn.commit()
 	return render_template('hello.html', name=info, message='The picture is deleted', photos=getUsersPhotos(aid))
 
+@app.route('/show_tags/<d>', methods=['POST'])
+def show_tags(d):
+	print d 	
+	return render_template('hello.html', message='All picture in this tag', photos=getTagsPhotos(d))
 
-
+@app.route('/show_tags_private/<d>', methods=['POST'])
+def show_tags_private(d):
+	print d 
+	info = getUserinfoFromEmail(flask_login.current_user.id)
+	return render_template('hello.html', name=info[0], message='All picture in this tag', photos=getTagsPhotosPrivate(d, getUserIdFromEmail(flask_login.current_user.id)))
 
 @app.route('/send/<filename>')
 @flask_login.login_required
@@ -384,7 +466,9 @@ def send_file(filename):
 #default page  
 @app.route("/", methods=['GET'])
 def hello():
-	return render_template('hello.html', message='Welecome to Photoshare')
+	tags = gatherTags()
+	print tags
+	return render_template('hello.html', message='Welecome to Photoshare', tags=tags)
 
 
 if __name__ == "__main__":

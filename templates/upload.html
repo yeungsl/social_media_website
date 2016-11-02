@@ -24,9 +24,11 @@
                 <input type="text" name="caption" required='true' /><br />
                 <label for="albumName">Please enter album name:</label>
                 <input type="text" name="albumName" required='true' /><br />
+                <label for="tag">Please enter a tag(please spereate each tags with # no space):</label>
+                <input type="text" name="tag" required='true' /><br />
                 <input type="submit" value="Upload" />
             </form>
-        <div class="ti">
+        <div class="title">
             <h1>Create an album</h1>
         </div>
             <form method="post" action="/upload/add_albums">
@@ -35,7 +37,7 @@
                 <input type="submit" value="Create" />
             </form>
 
-        <div class="ti">
+        <div class="title">
             <h1>Enter name to delete your albums and photos associated with it</h1>
         </div>
             <form method="post" action="/upload/delete_albums">
@@ -45,5 +47,7 @@
                 <input type="date" name="cdate" required='true' /><br />
                 <input type="submit" value="Delete" />
             </form>
+
+
         <a href='/'>Home</a>
     </body>
