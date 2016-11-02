@@ -2,9 +2,12 @@
 <head>
     <title>Create an account!</title>
 </head>
-{%if not supress%}
-<h1> Email already in use! Use another one or <a href="/login">login</a></h1>
-{% endif %}
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <h1> Email already in use! Use another one or <a href="/login">login</a></h1>
+    <h1> Or you entered invalied gender. No offense, you can only fill in male or female</h1>
+    {% endif %}
+{% endwith %}
     <body>
         <div class="title">
             <h1>Enter your information below</h1>
@@ -15,6 +18,16 @@
                 <input type="email" name="email" /><br />
                 <label for="password">Enter password:</label>
                 <input type="password" name="password" /><br />
+                <label for="fname">Enter first name:</label>
+                <input type="fname" name="fname" /><br />
+                <label for="lname">Enter last name:</label>
+                <input type="lname" name="lname" /><br />
+                <label for="bday">Enter date of birth:</label>
+                <input type="date" name="bday" /><br />
+                <label for="hometown">Enter hometown:</label>
+                <input type="hometown" name="hometown" /><br />
+                <label for="gender">Enter gender:</label>
+                <input type="gender" name="gender" /><br />
                 <input type="submit" />
             </form>
          </div>

@@ -10,9 +10,10 @@
 ###################################################
 
 import flask
-from flask import Flask, Response, request, render_template, redirect, url_for
+from flask import Flask, Response, request, render_template, redirect, url_for, flash
 from flaskext.mysql import MySQL
 import flask.ext.login as flask_login
+from dateutil.parser import parse
 
 #for image uploading
 from werkzeug import secure_filename
@@ -21,6 +22,7 @@ import os, base64
 mysql = MySQL()
 app = Flask(__name__)
 app.secret_key = 'super secret string'  # Change this!
+upload_folder = '/Users/younith/Desktop/social_media_website/templates/uploads' #store all the picture uploaded into his directory on the file system
 
 #These will need to be changed according to your creditionals
 app.config['MYSQL_DATABASE_USER'] = 'root'
@@ -124,21 +126,29 @@ def register_user():
 	try:
 		email=request.form.get('email')
 		password=request.form.get('password')
+		fname=request.form.get('fname')
+		lname=request.form.get('lname')
+		bday=request.form.get('bday')
+		ht=request.form.get('ht')
+		gender=request.form.get('gender')
 	except:
 		print "couldn't find all tokens" #this prints to shell, end users will not see this (all print statements go to shell)
 		return flask.redirect(flask.url_for('register'))
 	cursor = conn.cursor()
-	test =  isEmailUnique(email)
-	if test:
-		print cursor.execute("INSERT INTO Users (email, password) VALUES ('{0}', '{1}')".format(email, password))
+	test1 =  isEmailUnique(email)
+	test2 = qualify(gender)
+	print test2 
+	if test1 and test2:
+		print cursor.execute("INSERT INTO Users (first_name, last_name, date_of_birth, email, hometown, gender, password) VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}')".format(fname, lname, bday, email, ht, gender, password))
 		conn.commit()
 		#log user in
 		user = User()
 		user.id = email
 		flask_login.login_user(user)
-		return render_template('hello.html', name=email, message='Account Created!')
+		return render_template('hello.html', name=fname, message='Account Created!')
 	else:
 		print "couldn't find all tokens"
+		flask.flash('True')
 		return flask.redirect(flask.url_for('register'))
 
 def getUsersPhotos(uid):
@@ -159,6 +169,12 @@ def isEmailUnique(email):
 		return False
 	else:
 		return True
+
+def qualify(gender):
+	if (gender == 'male' or gender == 'female'):
+		return True
+	else:
+		return False
 
 def getUserinfoFromEmail(email):
 	cursor = conn.cursor()
@@ -188,6 +204,50 @@ def protected():
 	activeList = getActivelist()
 	print activeList
 	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, actlist=activeList, message="Here's your profile")
+
+@app.route('/friend', methods=['GET'])
+@flask_login.login_required
+def friend():
+	return render_template('friend.html')
+
+@app.route('/friend', methods=['POST'])
+@flask_login.login_required
+def add_friend():
+	try:
+		email=request.form.get('email')
+	except:
+		print "couldn't find all tokens" #this prints to shell, end users will not see this (all print statements go to shell)
+		return flask.redirect(flask.url_for('friend'))
+	cursor = conn.cursor()
+	if email == flask_login.current_user.id:
+		print "cannot add self as friend"
+		flask.flash('cannot add yourself as friend, try again!')
+		return flask.redirect(flask.url_for('friend'))
+	if isEmailUnique(email): #check if the email is registered
+		print "There is no such account"
+		flask.flash('There is no such account!')
+		return flask.redirect(flask.url_for('friend'))
+	else:
+		cursor.execute("SELECT U1.user_id, U1.first_name, U2.user_id FROM users U1, users U2 WHERE U1.email = '{0}' and U2.email = '{1}'". format(flask_login.current_user.id, email))
+		r = cursor.fetchall()[0]
+		print r
+		uid1 = r[0]
+		fname = r[1]
+		uid2 = r[2]
+		if alreadyFriends(uid1, uid2):
+			print "Already had this friend"
+			flask.flash('Already had this friend!')
+			return flask.redirect(flask.url_for('friend'))
+		print cursor.execute("INSERT INTO Friends (user_id, friend_id) VALUES ('{0}', '{1}')".format(uid1, uid2))
+		conn.commit()
+		return render_template('hello.html', name=fname, message='Friend added!')
+
+def alreadyFriends(user, friend):
+	cursor = conn.cursor()
+	if cursor.execute("SELECT * FROM friends WHERE friend_id = '{0}' AND user_id = '{1}'".format(friend, user)):
+		return True
+	else:
+		return False
 
 #begin photo uploading code
 # photos uploaded using base64 encoding so they can be directly embeded in HTML 
