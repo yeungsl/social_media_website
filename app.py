@@ -29,6 +29,7 @@ app.config['MYSQL_DATABASE_USER'] = 'root'
 app.config['MYSQL_DATABASE_PASSWORD'] = 'longlong1155'
 app.config['MYSQL_DATABASE_DB'] = 'photoshare'
 app.config['MYSQL_DATABASE_HOST'] = 'localhost'
+app.config['UPLOAD_FOLDER'] = upload_folder
 mysql.init_app(app)
 
 #begin code used for login
@@ -151,10 +152,12 @@ def register_user():
 		flask.flash('True')
 		return flask.redirect(flask.url_for('register'))
 
-def getUsersPhotos(uid):
+def getUsersPhotos(aid):
 	cursor = conn.cursor()
-	cursor.execute("SELECT imgdata, picture_id, caption FROM Pictures WHERE user_id = '{0}'".format(uid))
-	return cursor.fetchall() #NOTE list of tuples, [(imgdata, pid), ...]
+	cursor.execute("SELECT imgdata, picture_id, caption FROM Pictures WHERE album_id = '{0}'".format(aid))
+	r = cursor.fetchall()
+	print r
+	return r #NOTE list of tuples, [(imgdata, pid), ...]
 
 def getUserIdFromEmail(email):
 	cursor = conn.cursor()
@@ -186,9 +189,19 @@ def getFriendsFromEmail(email):
 	cursor.execute("SELECT U2.first_name, U2.last_name, U2.email FROM users U1, users U2, friends F WHERE U1.user_id = F.user_id AND U2.user_id = F.friend_id AND U1.email = '{0}'".format(email))
 	return cursor.fetchall()
 
+def getAlbumsFromEmail(email):
+	cursor = conn.cursor()
+	cursor.execute("SELECT A.name FROM albums A, users U WHERE A.owner_id = U.user_id AND U.email = '{0}'".format(email))
+	return cursor.fetchall()
+
 def getActivelist():
 	cursor = conn.cursor()
 	cursor.execute("SELECT email, count(*) FROM users U, albums A, pictures P WHERE U.user_id = A.owner_id and P.album_id = A.album_id GROUP BY user_id ORDER BY count(*) desc")
+	return cursor.fetchall()
+
+def getAid(name):
+	cursor = conn.cursor()
+	cursor.execute("SELECT album_id FROM albums WHERE name = '{0}'".format(name))
 	return cursor.fetchall()
 #end login code
 
@@ -258,21 +271,38 @@ def allowed_file(filename):
 @app.route('/upload', methods=['GET', 'POST'])
 @flask_login.login_required
 def upload_file():
+	alist = getAlbumsFromEmail(flask_login.current_user.id)
+	anum = len(alist)
 	if request.method == 'POST':
-		uid = getUserIdFromEmail(flask_login.current_user.id)
+		aid = getAid(request.form.get('albumName'))
 		imgfile = request.files['photo']
 		caption = request.form.get('caption')
 		print caption
-		photo_data = base64.standard_b64encode(imgfile.read())
-		cursor = conn.cursor()
-		cursor.execute("INSERT INTO Pictures (imgdata, user_id, caption) VALUES ('{0}', '{1}', '{2}' )".format(photo_data,uid, caption))
-		conn.commit()
-		return render_template('hello.html', name=flask_login.current_user.id, message='Photo uploaded!', photos=getUsersPhotos(uid) )
+		print aid
+		if not aid:
+			return render_template('upload.html', message='Album input does not exists, do you want to creat a new one?')
+		else:
+			aid = aid[0][0]
+		if imgfile and allowed_file(imgfile.filename):
+			filename = secure_filename(imgfile.filename)
+			imgfile.save(os.path.join(app.config['UPLOAD_FOLDER'],filename))
+			cursor = conn.cursor()
+			cursor.execute("INSERT INTO Pictures (album_id, imgdata, caption) VALUES ('{0}', '{1}', '{2}' )".format(aid, filename, caption))
+			conn.commit()
+			info = getUserinfoFromEmail(flask_login.current_user.id)[0]
+			return render_template('hello.html', name=info, message='Photo uploaded!', photos=getUsersPhotos(aid))
+		else:
+			return render_template('upload.html', message='file choosen cannot be uploaded', num=anum, list=alist)
 	#The method is GET so we return a  HTML form to upload the a photo.
 	else:
-		return render_template('upload.html')
+		return render_template('upload.html', num=anum, list=alist)
 #end photo uploading code 
 
+@app.route('/send/<filename>')
+@flask_login.login_required
+def send_file(filename):
+	return flask.send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+#upload page for album
 
 #default page  
 @app.route("/", methods=['GET'])
