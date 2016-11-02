@@ -198,7 +198,7 @@ def getAlbumsFromEmail(email):
 
 def getActivelist():
 	cursor = conn.cursor()
-	cursor.execute("SELECT email, count(*) FROM users U, albums A, pictures P WHERE U.user_id = A.owner_id and P.album_id = A.album_id GROUP BY user_id ORDER BY count(*) desc")
+	cursor.execute("SELECT T1.email, (T1.num + T2.num)As Tnum FROM (SELECT email, count(*) As num FROM users U, albums A, pictures P WHERE U.user_id = A.owner_id and P.album_id = A.album_id group by user_id) As T1, (SELECT email, count(*) As num FROM users S, comments C WHERE S.user_id = C.owner_id group by user_id) As T2 WHERE T1.email = T2.email ORDER BY Tnum DESC")
 	return cursor.fetchall()
 
 def getAid(name):
@@ -222,6 +222,11 @@ def verifyAlbums(aname, cdate):
 def privateTags(email):
 	cursor = conn.cursor()
 	cursor.execute("SELECT description FROM (SELECT picture_id, description FROM tags WHERE picture_id IN( SELECT T2.picture_id FROM tags T2, users U, albums A, pictures P WHERE U.email = '{0}' AND U.user_id = A.owner_id AND A.album_id = P.album_id AND P.picture_id = T2.picture_id))AS Temp GROUP BY description HAVING count(*)>=1 ORDER BY count(*) DESC".format(email))
+	return cursor.fetchall()
+
+def getCommentsFromPhotos(pid):
+	cursor = conn.cursor()
+	cursor.execute("SELECT comment_id, text, date_left FROM comments WHERE picture_id = '{0}'".format(pid))
 	return cursor.fetchall()	
 
 #end login code
@@ -240,13 +245,18 @@ def protected():
 	alist = getAlbumsFromEmail(flask_login.current_user.id)
 	anum = len(alist)
 	aplist = {}
+	pclist = {}
 	for album in alist:
 		p = getUsersPhotos(album[2])
 		aplist[album] = p
+		for photo in p:
+			c = getCommentsFromPhotos(photo[1])
+			pclist[photo] = c
 	print aplist
+	print pclist
 	tags = privateTags(flask_login.current_user.id)
 	print tags
-	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, anum=anum, alist=aplist, actlist=activeList, tags=tags, private=1, message="Here's your profile")
+	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, anum=anum, alist=aplist, pclist=pclist, actlist=activeList, tags=tags, private=1, message="Here's your profile")
 
 @app.route('/friend', methods=['GET'])
 @flask_login.login_required
@@ -463,12 +473,35 @@ def send_file(filename):
 	return flask.send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 #upload page for album
 
+@app.route('/comment_pictures/<pid>', methods=['POST'])
+def comment_pictures(pid):
+	cdate = datetime.datetime.now().date().isoformat()
+	try:
+		comment = request.form.get('comment')
+	except:
+		print "couldn't find all tokens" #this prints to shell, end users will not see this (all print statements go to shell)
+		return flask.redirect(flask.url_for('/'))
+	cursor = conn.cursor()
+	try:
+		uid = getUserIdFromEmail(flask_login.current_user.id)
+	except:
+		cursor.execute("INSERT INTO Comments (text, date_left, picture_id) VALUES ('{0}', '{1}', '{2}')".format(comment, cdate, pid))
+		conn.commit()
+		return render_template('hello.html', message='comment successful')
+	cursor.execute("INSERT INTO Comments (owner_id, text, date_left, picture_id) VALUES ('{0}', '{1}', '{2}', '{3}')".format(uid, comment, cdate, pid))
+	conn.commit()
+	info = getUserinfoFromEmail(flask_login.current_user.id)
+	return render_template('hello.html', name=info[0], message='comment successful, login to see comments')
+
+
 #default page  
 @app.route("/", methods=['GET'])
 def hello():
 	tags = gatherTags()
 	print tags
-	return render_template('hello.html', message='Welecome to Photoshare', tags=tags)
+	activeList = getActivelist()
+	print activeList
+	return render_template('hello.html', message='Welecome to Photoshare', tags=tags, actlist=activeList)
 
 
 if __name__ == "__main__":

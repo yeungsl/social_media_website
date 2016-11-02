@@ -61,7 +61,7 @@ CREATE TABLE Tags(
 
 CREATE TABLE Comments(
   `comment_id` int(11) NOT NULL AUTO_INCREMENT,
-  `owner_id` int(11) NOT NULL,
+  `owner_id` int(11),
   `text` text NOT NULL,
   `date_left` date NOT NULL,
   `picture_id` int(11) NOT NULL,

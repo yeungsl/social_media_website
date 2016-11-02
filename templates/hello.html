@@ -39,6 +39,13 @@
                 <form method="post" action="{{ url_for('delete_pictures', pid=photo[1], aid=ap[2]) }}">
                 <input type="submit" value="Delete" />
                 </form>
+                {% if pclist[photo] %}
+                  <ul>
+                  {% for comment in pclist[photo] %}
+                    <li><h4>{{ comment[1] }}</h4>  date left: {{ comment[2] }}</li>
+                  {% endfor %}
+                  </ul>
+                {% endif %}
                </li>
             {% endfor %}
           </ul>
@@ -51,7 +58,7 @@
 	<h4> the active list:</h4>
 		<ul>
 		{% for user in actlist %}
-			<li>email: {{ user[0] }}, number of photos: {{ user[1] }}</li>
+			<li>email: {{ user[0] }}, points earned: {{ user[1] }}</li>
 		{% endfor %}
 		</ul>
 {% endif %}
@@ -62,6 +69,11 @@
     {% for photo in photos %}
         <li>
           <img src="{{ url_for('send_file', filename=photo[0]) }}"/>
+          <form method="post" action="{{ url_for('comment_pictures', pid=photo[1]) }}">
+           <label for="comment">Please enter a comment:</label>
+          <input type="text" name="comment" required='true' /><br />
+          <input type="submit" value="Comment" />
+          </form>
         </li>
     {% endfor %}
     </ul>
