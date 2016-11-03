@@ -36,7 +36,7 @@
 {% endif %}
 
 {% if anum %}
-  <h4> you have {{ num }} albums:</h4>
+  <h4> you have {{ anum }} albums:</h4>
     <ul>
       {% for ap in alist %}
         <li><a href="{{ url_for('expand_album', aid=ap[2], aname=ap[0]) }}">name: {{ ap[0] }}</a>, date created: {{ ap[1] }}

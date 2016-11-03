@@ -24,7 +24,7 @@ import os, base64
 mysql = MySQL()
 app = Flask(__name__)
 app.secret_key = 'super secret string'  # Change this!
-upload_folder = '/Users/younith/Desktop/social_media_website/templates/uploads' #store all the picture uploaded into his directory on the file system
+upload_folder = '/Users/yeungSL/Desktop/social_media_website/templates/uploads' #store all the picture uploaded into his directory on the file system
 
 #These will need to be changed according to your creditionals
 app.config['MYSQL_DATABASE_USER'] = 'root'
@@ -253,13 +253,21 @@ def protected():
 	print activeList
 	alist = getAlbumsFromEmail(flask_login.current_user.id)
 	anum = len(alist)
+	print alist
+	print anum
 	tags = privateTags(flask_login.current_user.id)
-	print tags
-	yml_list = you_may_also_like(tags, getUserIdFromEmail(flask_login.current_user.id))
-	p = yml_list
-	pclist = getCLfromPic(p)
-	print pclist
-	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, anum=anum, alist=alist, pclist=pclist, actlist=activeList, tags=tags, private=1, photos=yml_list, yml=1, message="Here's your profile")
+	yml_list = []
+	pclist = []
+	private = 0
+	yml = 0
+	if tags:
+		print tags
+		yml_list = you_may_also_like(tags, getUserIdFromEmail(flask_login.current_user.id))
+		pclist = getCLfromPic(yml_list)
+		print pclist
+		private = 1
+		yml = 1
+	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, anum=anum, alist=alist, pclist=pclist, actlist=activeList, tags=tags, private=private, photos=yml_list, yml=yml, message="Here's your profile")
 
 @app.route('/expand_album/<aid>/<aname>')
 def expand_album(aid, aname):
@@ -336,14 +344,15 @@ def visit(email):
 	p = getUsersPhotosFromUid(getUserIdFromEmail(email))
 	pclist = getCLfromPic(p)
 	print pclist
+	info = getUserinfoFromEmail(flask_login.current_user.id)[0]
 	try:
 		uemail = flask_login.current_user.id
 		if email == uemail:
 			return flask.redirect('/profile')
 		else:
-			return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, anum=anum, alist=alist, pclist=pclist, actlist=activeList, tags=tags, photos=p, message="Here's the profile")
+			return render_template('hello.html', name=info, infos=uinfo, num=fnum, list=flist, anum=anum, alist=alist, pclist=pclist, actlist=activeList, tags=tags, photos=p, message="Here's the profile")
 	except:
-		return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, anum=anum, alist=alist, pclist=pclist, actlist=activeList, tags=tags, photos=p, message="Here's the profile")
+		return render_template('hello.html', name=info, infos=uinfo, num=fnum, list=flist, anum=anum, alist=alist, pclist=pclist, actlist=activeList, tags=tags, photos=p, message="Here's the profile")
 
 
 
