@@ -3,7 +3,6 @@
 {% if message %}
   <h4>{{message}}!</h4>
 {% endif %}
-
 <title>Photoshare</title>
 
 {% if name %}
@@ -22,7 +21,16 @@
 	<h4> you have {{ num }} friends:</h4>
 		<ul>
 		{% for friend in list %}
-			<li>name: {{ friend[0] }} {{ friend[1] }}, email: {{ friend[2] }}</li>
+			<li><a href="{{ url_for('visit', email=friend[2]) }}">email: {{ friend[2] }}</a>,  name: {{ friend[0] }} {{ friend[1] }}</li>
+		{% endfor %}
+		</ul>
+{% endif %}
+
+{% if actlist %}
+	<h4> the active list:</h4>
+		<ul>
+		{% for user in actlist %}
+			<li><a href="{{ url_for('visit', email=user[0]) }}">email: {{ user[0] }}</a>, points earned: {{ user[1] }}</li>
 		{% endfor %}
 		</ul>
 {% endif %}
@@ -31,56 +39,50 @@
   <h4> you have {{ num }} albums:</h4>
     <ul>
       {% for ap in alist %}
-        <li>name: {{ ap[0] }}, date created: {{ ap[1] }}
-          <ul>
-            {% for photo in alist[ap] %}
-              <li>
-                <img src="{{ url_for('send_file', filename=photo[0]) }}"/>
-                <form method="post" action="{{ url_for('delete_pictures', pid=photo[1], aid=ap[2]) }}">
-                <input type="submit" value="Delete" />
-                </form>
-                <form method="post" action="{{ url_for('like_pictures', pid=photo[1]) }}">
-                <input type="submit" value="Like" />
-                </form>
-                {% if pclist[photo] %}
-                  <h4>number of likes: {{ pclist[photo][-1][0] }}</h4>
-                  <ul>
-                  {% for comment in pclist[photo] %}
-                    <li><h4>{{ comment[1] }}</h4>  date left: {{ comment[2] }}</li>
-                  {% endfor %}
-                  </ul>
-                {% endif %}
-               </li>
-            {% endfor %}
-          </ul>
+        <li><a href="{{ url_for('expand_album', aid=ap[2], aname=ap[0]) }}">name: {{ ap[0] }}</a>, date created: {{ ap[1] }}
         </li>
       {% endfor %}
     </ul>
 {% endif %}
 
-{% if actlist %}
-	<h4> the active list:</h4>
-		<ul>
-		{% for user in actlist %}
-			<li>email: {{ user[0] }}, points earned: {{ user[1] }}</li>
-		{% endfor %}
-		</ul>
-{% endif %}
-
 {% if photos %}
+{% if yml %}
+<h2>You may also like</h2>
+{% else %}
 <h2>Here's your photos</h2>
+{% endif %}
     <ul>
     {% for photo in photos %}
         <li>
           <img src="{{ url_for('send_file', filename=photo[0]) }}"/>
-          <form method="post" action="{{ url_for('comment_pictures', pid=photo[1]) }}">
-           <label for="comment">Please enter a comment:</label>
-          <input type="text" name="comment" required='true' /><br />
-          <input type="submit" value="Comment" />
-          </form>
-          <form method="post" action="{{ url_for('like_pictures', pid=photo[1]) }}">
-          <input type="submit" value="Like" />
-          </form>
+          		{% if private %}
+                <img src="{{ url_for('send_file', filename=photo[0]) }}"/>
+                <form method="post" action="{{ url_for('delete_pictures', pid=photo[1]) }}">
+                <input type="submit" value="Delete" />
+                </form>
+                {% else %}
+                <form method="post" action="{{ url_for('comment_pictures', pid=photo[1]) }}">
+           		<label for="comment">Please enter a comment:</label>
+          		<input type="text" name="comment" required='true' /><br />
+          		<input type="submit" value="Comment" />
+          		</form>
+            	{% endif %}
+          		<form method="post" action="{{ url_for('like_pictures', pid=photo[1]) }}">
+          		<input type="submit" value="Like" />
+         		</form>
+          		{% if pclist[photo] %}
+                  <h4>number of likes: {{ pclist[photo][-1][0] }}</h4>
+                  <h4>captions: {{ photo[2] }}</h4>
+                  <h4>comments:</h4>
+                  <ul>
+                  {% for comment in pclist[photo][:-1] %}
+                    <li><p>{{ comment[1] }}  ({{ comment[2] }})</p></li>
+                  {% endfor %}
+                  </ul>
+                 {% else %}
+                 <h4>number of likes: 0 </h4> 
+                 <p>still need some comments!</p>
+                {% endif %}
         </li>
     {% endfor %}
     </ul>

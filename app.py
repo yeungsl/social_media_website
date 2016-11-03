@@ -158,8 +158,12 @@ def getUsersPhotos(aid):
 	cursor = conn.cursor()
 	cursor.execute("SELECT imgdata, picture_id, caption FROM Pictures WHERE album_id = '{0}'".format(aid))
 	r = cursor.fetchall()
-	print r
 	return r #NOTE list of tuples, [(imgdata, pid), ...]
+
+def getUsersPhotosFromUid(uid):
+	cursor = conn.cursor()
+	cursor.execute("SELECT P.imgdata, P.picture_id, P.caption FROM Pictures P, Albums A WHERE A.owner_id = '{0}' AND A.album_id = P.album_id".format(uid))
+	return cursor.fetchall()
 
 def getUserIdFromEmail(email):
 	cursor = conn.cursor()
@@ -249,22 +253,30 @@ def protected():
 	print activeList
 	alist = getAlbumsFromEmail(flask_login.current_user.id)
 	anum = len(alist)
-	aplist = {}
-	pclist = {}
-	for album in alist:
-		p = getUsersPhotos(album[2])
-		aplist[album] = p
-		for photo in p:
-			l = getLikesFromPhotos(photo[1])
-			c = getCommentsFromPhotos(photo[1])
-			pclist[photo] = c
-			pclist[photo] += l 
-	print aplist
-	print pclist
 	tags = privateTags(flask_login.current_user.id)
 	print tags
 	yml_list = you_may_also_like(tags, getUserIdFromEmail(flask_login.current_user.id))
-	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, anum=anum, alist=aplist, pclist=pclist, actlist=activeList, tags=tags, private=1, photos=yml_list, message="Here's your profile")
+	p = yml_list
+	pclist = getCLfromPic(p)
+	print pclist
+	return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, anum=anum, alist=alist, pclist=pclist, actlist=activeList, tags=tags, private=1, photos=yml_list, yml=1, message="Here's your profile")
+
+@app.route('/expand_album/<aid>/<aname>')
+def expand_album(aid, aname):
+	p = getUsersPhotos(aid)
+	pclist = {}	
+	for photo in p:
+			l = getLikesFromPhotos(photo[1])
+			c = getCommentsFromPhotos(photo[1])
+			print c
+			pclist[photo] = c
+			pclist[photo] += l 
+	try:
+		uid = getUserIdFromEmail(flask_login.current_user.id)
+	except:
+		return render_template('hello.html', message=aname, photos=p, pclist=pclist)
+	info = getUserinfoFromEmail(flask_login.current_user.id)[0]
+	return render_template('hello.html', name=info, message=aname, photos=p, private=1, pclist=pclist)
 
 @app.route('/friend', methods=['GET'])
 @flask_login.login_required
@@ -303,7 +315,7 @@ def add_friend():
 			return flask.redirect(flask.url_for('friend'))
 		print cursor.execute("INSERT INTO Friends (user_id, friend_id) VALUES ('{0}', '{1}')".format(uid1, uid2))
 		conn.commit()
-		return render_template('hello.html', name=fname, message='Friend added!')
+		return flask.redirect('/profile')
 
 def alreadyFriends(user, friend):
 	cursor = conn.cursor()
@@ -311,6 +323,31 @@ def alreadyFriends(user, friend):
 		return True
 	else:
 		return False
+
+@app.route('/visit/<email>')
+def visit(email):
+	uinfo = getUserinfoFromEmail(email)
+	flist = getFriendsFromEmail(email)
+	fnum = len(flist)
+	activeList = getActivelist()
+	alist = getAlbumsFromEmail(email)
+	anum = len(alist)
+	tags = privateTags(email)
+	p = getUsersPhotosFromUid(getUserIdFromEmail(email))
+	pclist = getCLfromPic(p)
+	print pclist
+	try:
+		uemail = flask_login.current_user.id
+		if email == uemail:
+			return flask.redirect('/profile')
+		else:
+			return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, anum=anum, alist=alist, pclist=pclist, actlist=activeList, tags=tags, photos=p, message="Here's the profile")
+	except:
+		return render_template('hello.html', name=uinfo[0], infos=uinfo, num=fnum, list=flist, anum=anum, alist=alist, pclist=pclist, actlist=activeList, tags=tags, photos=p, message="Here's the profile")
+
+
+
+
 
 #begin photo uploading code
 # photos uploaded using base64 encoding so they can be directly embeded in HTML 
@@ -343,7 +380,8 @@ def upload_file():
 			info = getUserinfoFromEmail(flask_login.current_user.id)[0]
 			p = getUsersPhotos(aid)
 			AddTag(p, tag)
-			return render_template('hello.html', name=info, message='Photo uploaded!', photos=p)
+			pclist	= getCLfromPic(p)
+			return render_template('hello.html', name=info, message='Photo uploaded!', photos=p, pclist=pclist)
 		else:
 			return render_template('upload.html', message='file choosen cannot be uploaded', num=anum, list=alist)
 	#The method is GET so we return a  HTML form to upload the a photo.
@@ -401,13 +439,13 @@ def add_albums():
 		aname=request.form.get('albumName')
 	except:
 		print "couldn't find all tokens" #this prints to shell, end users will not see this (all print statements go to shell)
-		return flask.redirect(flask.url_for('upload'))
+		return flask.redirect('/upload')
 	uid = getUserIdFromEmail(flask_login.current_user.id)
 	info = getUserinfoFromEmail(flask_login.current_user.id)[0]
 	cursor = conn.cursor()
 	cursor.execute("INSERT INTO Albums (name, owner_id, date_created) VALUES ('{0}', '{1}', '{2}')".format(aname, uid, cdate))
 	conn.commit()
-	return render_template('hello.html', name=info, message='New Album set up', albums=getAlbumsFromEmail(flask_login.current_user.id))
+	return flask.redirect('/profile')
 
 @app.route('/upload/delete_albums', methods=['POST'])
 @flask_login.login_required
@@ -452,7 +490,8 @@ def search_tags():
 		if tag in T:
 			plist += getTagsPhotos(tag)
 	plist = set(plist)
-	return render_template('hello.html', message='Related pictures', photos=plist)
+	pclist = getCLfromPic(plist)
+	return render_template('hello.html', message='Related pictures', photos=plist, pclist=pclist)
 
 @app.route('/tags_recom', methods=['POST'])
 def tags_recom():
@@ -473,29 +512,33 @@ def tags_recom():
 			T += [x]
 	print T
 	tags = tag_recommendation(T)
-	return render_template('hello.html', message='Recommanded pictures', tags=tags)
+	return render_template('hello.html', message='Recommanded tags', tags=tags)
 
 
-@app.route('/delete_pictures/<pid>/<aid>', methods=['POST'])
+@app.route('/delete_pictures/<pid>', methods=['POST'])
 @flask_login.login_required
-def delete_pictures(pid, aid):
+def delete_pictures(pid):
 	print pid
 	info = getUserinfoFromEmail(flask_login.current_user.id)[0]
 	cursor = conn.cursor()
 	cursor.execute("DELETE FROM pictures WHERE picture_id = '{0}'".format(pid))
 	conn.commit()
-	return render_template('hello.html', name=info, message='The picture is deleted', photos=getUsersPhotos(aid))
+	return render_template('hello.html', name=info, message='The picture is deleted')
 
 @app.route('/show_tags/<d>', methods=['POST'])
 def show_tags(d):
-	print d 	
-	return render_template('hello.html', message='All picture in this tag', photos=getTagsPhotos(d))
+	print d 
+	p = getTagsPhotos(d)
+	pclist = getCLfromPic(p)	
+	return render_template('hello.html', message='All picture in this tag', photos=p, pclist=pclist)
 
 @app.route('/show_tags_private/<d>', methods=['POST'])
 def show_tags_private(d):
 	print d 
 	info = getUserinfoFromEmail(flask_login.current_user.id)
-	return render_template('hello.html', name=info[0], message='All picture in this tag', photos=getTagsPhotosPrivate(d, getUserIdFromEmail(flask_login.current_user.id)))
+	p = getTagsPhotosPrivate(d, getUserIdFromEmail(flask_login.current_user.id))
+	pclist = getCLfromPic(p)
+	return render_template('hello.html', name=info[0], message='All picture in this tag', photos=p, pclist=pclist)
 
 @app.route('/send/<filename>')
 @flask_login.login_required
@@ -510,20 +553,19 @@ def comment_pictures(pid):
 		comment = request.form.get('comment')
 	except:
 		print "couldn't find all tokens" #this prints to shell, end users will not see this (all print statements go to shell)
-		return flask.redirect(flask.url_for('/'))
+		return flask.redirect('/')
 	cursor = conn.cursor()
 	try:
 		uid = getUserIdFromEmail(flask_login.current_user.id)
 	except:
 		cursor.execute("INSERT INTO Comments (text, date_left, picture_id) VALUES ('{0}', '{1}', '{2}')".format(comment, cdate, pid))
 		conn.commit()
-		return render_template('hello.html', message='comment successful') #redirect to home
+		return flask.redirect('/')
 	if addCommentSelf(uid, pid):
 		return render_template('hello.html', message='cannot comment photo of your own')
 	cursor.execute("INSERT INTO Comments (owner_id, text, date_left, picture_id) VALUES ('{0}', '{1}', '{2}', '{3}')".format(uid, comment, cdate, pid))
 	conn.commit()
-	info = getUserinfoFromEmail(flask_login.current_user.id)
-	return render_template('hello.html', name=info[0], message='comment successful') #redirect to home
+	return flask.redirect('/')
 
 def addCommentSelf(uid, pid):
 	cursor = conn.cursor()
@@ -542,14 +584,23 @@ def like_pictures(pid):
 	except:
 		cursor.execute("INSERT INTO Likes (picture_id) VALUES ('{0}')".format(pid))
 		conn.commit()
-		return render_template('hello.html', message='Thanks for the like')
+		return flask.redirect('/')
+	if likedBefore(pid, uid):
+		return flask.redirect('/profile')
 	cursor.execute("INSERT INTO Likes (picture_id, user_id) VALUES ('{0}', '{1}')".format(pid, uid))
 	conn.commit()
-	info = getUserinfoFromEmail(flask_login.current_user.id)
-	return render_template('hello.html', name=info[0], message='Thanks for the like')
+	return flask.redirect('/profile')
+
+def likedBefore(pid, uid):
+	cursor = conn.cursor()
+	if cursor.execute("SELECT picture_id, user_id FROM likes WHERE picture_id = '{0}' AND user_id = '{1}'".format(pid, uid)):
+		return True
+	else:
+		return False
+
 
 def you_may_also_like(tags, uid):
-	query_head = "SELECT P.imgdata, T.picture_id FROM Pictures P, Tags T, Albums A WHERE A.owner_id = '{0}' AND A.album_id = P.album_id AND P.picture_id = T.picture_id AND (".format(uid)
+	query_head = "SELECT P.imgdata, T.picture_id, P.caption FROM Pictures P, Tags T, Albums A WHERE A.owner_id = '{0}' AND A.album_id = P.album_id AND P.picture_id = T.picture_id AND (".format(uid)
 	query_tail = ") GROUP BY T.picture_id ORDER BY Count(T.description) DESC"
 	for tag in tags:
 		if tag == tags[-1]:
@@ -586,8 +637,26 @@ def hello():
 	print tags
 	activeList = getActivelist()
 	print activeList
-	return render_template('hello.html', message='Welecome to Photoshare', tags=tags, actlist=activeList)
+	p = set(getAllPics())
+	print p
+	pclist=getCLfromPic(p)
+	print pclist
+	return render_template('hello.html', message='Welecome to Photoshare', tags=tags, actlist=activeList, photos=p, pclist=pclist)
 
+def getAllPics():
+	cursor = conn.cursor()
+	cursor.execute("SELECT imgdata, picture_id, caption FROM pictures ")
+	return cursor.fetchall()
+
+def getCLfromPic(p):
+	pclist={}
+	for photo in p:
+		l = getLikesFromPhotos(photo[1])
+		c = getCommentsFromPhotos(photo[1])
+		print c
+		pclist[photo] = c 
+		pclist[photo] += l
+	return pclist
 
 if __name__ == "__main__":
 	#this is invoked when in the shell  you run 
