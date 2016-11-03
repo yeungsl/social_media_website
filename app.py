@@ -202,8 +202,21 @@ def getAlbumsFromEmail(email):
 
 def getActivelist():
 	cursor = conn.cursor()
-	cursor.execute("SELECT T1.email, (T1.num + T2.num)As Tnum FROM (SELECT email, count(*) As num FROM users U, albums A, pictures P WHERE U.user_id = A.owner_id and P.album_id = A.album_id group by user_id) As T1, (SELECT email, count(*) As num FROM users S, comments C WHERE S.user_id = C.owner_id group by user_id) As T2 WHERE T1.email = T2.email ORDER BY Tnum DESC")
-	return cursor.fetchall()
+	cursor.execute("SELECT email, count(*) As num FROM users U, albums A, pictures P WHERE U.user_id = A.owner_id and P.album_id = A.album_id group by user_id;")
+	pic = cursor.fetchall()
+	cursor.execute("SELECT email, count(*) As num FROM users S, comments C WHERE S.user_id = C.owner_id group by user_id;")
+	comments = cursor.fetchall()
+	alist = list()
+	for p in pic:
+		tcount = p[1]
+		for c in comments:
+			print p
+			print c
+			print tcount
+			if p[0] == c[0]:
+				tcount += c[1]
+		alist.append([p[0], tcount])
+	return alist
 
 def getAid(name):
 	cursor = conn.cursor()
