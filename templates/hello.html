@@ -1,18 +1,323 @@
 <!-- author ben lawson (balawson@bu.edu) -->
 <!doctype html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <script src="https://unpkg.com/masonry-layout@4.1/dist/masonry.pkgd.min.js"></script>
+  <link href='https://fonts.googleapis.com/css?family=Roboto:300,400,700' rel='stylesheet' type='text/css'>
+  <title>Photoshare</title>
+  <style type="text/css">
+    .post-box{
+      padding: 0px;
+    }
+    .post-box>img{
+      width:100%;
+    }
+
+    .container{
+      background-color: black;
+      width: 100%;
+    }
+    body{
+      background-color: #060606;
+    }
+    div.panel-body{
+      background-color: #222222;
+    }
+
+    .panel-default{
+      border-color: #282828;
+    }
+    .panel-default>.panel-heading {
+    color: #fff;
+    background-color: #cc0000;
+    border-color: #cc0000;
+    }
+  </style>
+</head>
+
+</body>
+<nav class="navbar navbar-inverse">
+  <div class="container-fluid">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-2">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="/">PhotoShare</a>
+    </div>
+
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-2">
+      <ul class="nav navbar-nav">
+        <li><a href="/profile">Profile</a></li>
+        <li class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Add<span class="caret"></span></a>
+          <ul class="dropdown-menu" role="menu">
+            <li><a href="/friend">Add Friend</a></li>
+            <li><a href="/upload">Edit Albums</a></li>
+            <li><a href="/register">Register</a></li>
+          </ul>
+        </li>
+      </ul>
+      <form class="navbar-form navbar-left" role="search" method="post" action="{{ url_for('search_tags') }}">
+        <div class="form-group">
+          <input type="text" class="form-control" placeholder="Search by Tags" name="words">
+        </div>
+        <button type="submit" class="btn btn-default">Search</button>
+      </form>
+      <form class="navbar-form navbar-left" role="search" method="post" action="{{ url_for('tags_recom') }}">
+        <div class="form-group">
+          <input type="text" class="form-control" placeholder="Related Tags" name="tags">
+        </div>
+        <button type="submit" class="btn btn-default">Recommend</button>
+      </form>
+      <ul class="nav navbar-nav navbar-right">
+        <li><a href="/logout">Log out</a></li>
+        <li><a href="/login">Log in</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<blockquote>
 {% if message %}
-  <h4>{{message}}!</h4>
+{% if name %}
+  <p style="color: #95a5a6">Hellow {{ name }}, {{message}}!</p>
+{% else %}
+  <p style="color: #95a5a6">{{message}}!</p>
 {% endif %}
-<title>Photoshare</title>
+{% endif %}
+</blockquote>
+
+
+<div class="item active">
+  <div class="container">
+    {% if yml %}
+    <h3>You may also like</h3>
+    {% else %}
+    <h3>Here's the photos</h3>
+    {% endif %}
+    <div class="masonry">
+    {% for photo in photos%}
+    <div class="post-box col-lg-4 col-md-4 col-sm-4">
+       <img src="{{ url_for('send_file', filename=photo[0]) }}"/>
+       
+       <div class="list-group">
+        <div class="list-group-item active">{{ photo[2] }}</div>
+       
+                {% for comment in pclist[photo][:-1] %}
+                <div class="list-group-item" style="background-color: #222222; border: 1px solid #222222; color:#fff;">
+                <small>{{ comment[1] }} <cite title="Source Title">{{ comment[2] }}</cite></small>
+                </div>
+                {% endfor %}
+              
+          {% if private %}
+                <div class="list-group-item" style="background-color: #222222; border: 1px solid #222222;">
+                <ul class="nav nav-pills" style="font-size: 14px;">
+                <li class="active"><a href="{{ url_for('like_pictures', pid=photo[1]) }}">Like<span class="badge">{{ pclist[photo][-1][0] }}</span></a>
+                </li>
+                <li><a href="{{ url_for('delete_pictures', pid=photo[1]) }}">Delete<span class="badge"></span></a>
+                </li>
+                </ul>
+                </div>
+                {% else %}
+                <div class="list-group-item" style="background-color: #222222; border: 1px solid #222222;">
+                <ul class="nav nav-pills" style="font-size: 14px;">
+                <li class="active"><a href="{{ url_for('like_pictures', pid=photo[1]) }}">Like<span class="badge">{{ pclist[photo][-1][0] }}</span></a>
+                </li>
+                <li>                
+                <form class="navbar-form navbar-left" role="search" method="post" action="{{ url_for('comment_pictures', pid=photo[1]) }}">
+                <div class="form-group">
+                <input type="text" class="form-control" placeholder="Comments" name="comment">
+                </div>
+                <button type="submit" class="btn btn-default">Publish</button>
+              </form>
+                </li>
+                </ul>
+                </div>
+              {% endif %}
+        </div>
+        </div>
+    </div>
+    {% endfor %}
+    </div>
+</div>
+
+
+<div class="container border-bottom: 1px solid black"> </div>
+
+{% if tags%}
+{% if private %}
+<div class="panel panel-primary" style="border: 1px solid #222222;">
+  <div class="panel-heading">
+    <h3 class="panel-title">Here are your tags</h3>
+  </div>
+  <div class="panel-body">
+    {% for tag in tags%}
+    <a href="{{ url_for('show_tags_private', d=tag[0]) }}" class="btn btn-primary">#{{ tag[0] }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="panel panel-primary">
+  <div class="panel-heading">
+    <h3 class="panel-title">Here are the most popular tags</h3>
+  </div>
+  <div class="panel-body">
+    {% for tag in tags%}
+    <a href="{{ url_for('show_tags', d=tag[0]) }}" class="btn btn-primary">#{{ tag[0] }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+{% if infos %}
+<div class="panel panel-default">
+  <div class="panel-heading">Personal information</div>
+  <div class="panel-body">
+    <ul style="list-style: none; color: #7f8c8d;">
+      <li>first name: {{ infos[0] }}</li>
+      <li>last name: {{ infos[1] }}</li>
+      <li>date of birth: {{ infos[2] }}</li>
+      <li>place living in: {{ infos[3] }}</li>
+      <li>gender: {{ infos[4] }}</li>
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+{% if num %}
+<div class="list-group">
+  <p class="list-group-item active" style="background-color: #77b300; border-color: #809a00;">
+    You have {{ num }} friend
+  </p>
+  {% for friend in list %}
+  <a href="{{ url_for('visit', email=friend[2]) }}" class="list-group-item" style="background-color: #222222; border: 1px solid #222222;">
+  {{ friend[0] }} {{ friend[1] }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if actlist %}
+<div class="list-group">
+  <p class="list-group-item active" style="background-color: #ff8800; border-color: #f05800;">
+    The active list
+  </p>
+  {% for user in actlist %}
+  <a href="{{ url_for('visit', email=user[0]) }}" class="list-group-item" style="background-color: #222222; border: 1px solid #222222;">
+  email: {{ user[0] }}, points earned: {{ user[1] }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if anum %}
+<div class="list-group">
+  <p class="list-group-item active" style="background-color: #9933cc; border-color: #6e2caf;">
+    You have {{ anum }} albums
+  </p>
+  {% for ap in alist %}
+  <a href="{{ url_for('expand_album', aid=ap[2], aname=ap[0]) }}" class="list-group-item" style="background-color: #222222; border: 1px solid #222222;">name: {{ ap[0] }}, date created: {{ ap[1] }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+
+
+
+<!--
+<div class="item active">
+  <div class="container">
+    {% if yml %}
+    <h3>You may also like</h3>
+    {% else %}
+    <h3>Here's your photos</h3>
+    {% endif %}
+    <div class="masonry">
+    {% for photo in photos%}
+    <div class="post-box col-lg-4 col-md-4 col-sm-4">
+       <img src="{{ url_for('send_file', filename=photo[0]) }}"/>
+       <h6>captions: {{ photo[2] }}</h6>
+       <div id="text" style="text-align: center; font-size: 15px;">
+          {% if private %}
+                <form method="post" action="{{ url_for('delete_pictures', pid=photo[1]) }}">
+                <input type="submit" value="Delete" />
+                </form>
+                {% else %}
+                <form method="post" action="{{ url_for('comment_pictures', pid=photo[1]) }}">
+              <label for="comment">Please enter a comment:</label>
+              <input type="text" name="comment" required='true' /><input type="submit" value="Comment" />
+              </form>
+              {% endif %}
+              <form method="post" action="{{ url_for('like_pictures', pid=photo[1]) }}">
+              <input type="submit" value="Like {{ pclist[photo][-1][0] }}" />
+            </form>
+                  <h6 style="text-align: left;">comments:</h6>
+                  <ul>
+                  {% for comment in pclist[photo][:-1] %}
+                    <li><p style="font-size: 10px; border-bottom: 1px solid black; margin: none;">{{ comment[1] }}  ({{ comment[2] }})</p></li>
+                  {% endfor %}
+                  </ul>
+              
+       </div>
+    </div>
+    {% endfor %}
+    </div>
+  </div>
+</div>
+-->
+<!--
+
+{% if message %}
+  <h3>{{message}}!</h3>
+{% endif %}
+
+
+{% if tags%}
+<div class="tags">
+<h4 class = "row-sm-4">Here are the most pouplar tags</h4>
+  <nav class="row-sm-8 text-left">
+  <ul>
+    {% for tag in tags %}
+        <li class="row-md-3 text-left">
+          {% if private %}
+          <form method="post" action="{{ url_for('show_tags_private', d=tag[0]) }}">
+          <input type="submit" value="#{{ tag[0] }}" />
+          </form>
+          {% else %}
+          <form method="post" action="{{ url_for('show_tags', d=tag[0]) }}">
+          <input type="submit" value="#{{ tag[0] }}" />
+          </form>
+          {% endif %}
+        </li>
+    {% endfor %}
+    </ul>
+    </nav>
+  </div>
+{% endif %}
+
+
 
 {% if name %}
-  <h1>Hello {{ name }}!</h1>
+  <h3>Hello {{ name }}!</h3>
   {% if infos %}
   	<h3>below is your personal information</h3>
-  	<ul>
-  	{% for info in infos %}
-  		<li>{{ info }}</li>
-  	{% endfor %}		
+  	<ul style="list-style: none;">
+  	
+  		<li>first name: {{ infos[0] }}</li>
+      <li>last name: {{ infos[1] }}</li>
+      <li>date of birth: {{ infos[2] }}</li>
+      <li>place living in: {{ infos[3] }}</li>
+      <li>gender: {{ infos[4] }}</li>
+  		
   	</ul>
   {% endif %}
 {% endif %}
@@ -47,16 +352,15 @@
 
 {% if photos %}
 {% if yml %}
-<h2>You may also like</h2>
+<h3>You may also like</h3>
 {% else %}
-<h2>Here's your photos</h2>
+<h3>Here's your photos</h3>
 {% endif %}
     <ul>
     {% for photo in photos %}
         <li>
           <img src="{{ url_for('send_file', filename=photo[0]) }}"/>
           		{% if private %}
-                <img src="{{ url_for('send_file', filename=photo[0]) }}"/>
                 <form method="post" action="{{ url_for('delete_pictures', pid=photo[1]) }}">
                 <input type="submit" value="Delete" />
                 </form>
@@ -88,28 +392,10 @@
     </ul>
 {% endif %}
 
-{% if tags%}
-<h2>Here are the most pouplar tags</h2>
-  <ul>
-    {% for tag in tags %}
-        <li>
-          {% if private %}
-          <form method="post" action="{{ url_for('show_tags_private', d=tag[0]) }}">
-          <input type="submit" value="#{{ tag[0] }}" />
-          </form>
-          {% else %}
-          <form method="post" action="{{ url_for('show_tags', d=tag[0]) }}">
-          <input type="submit" value="#{{ tag[0] }}" />
-          </form>
-          {% endif %}
-        </li>
-    {% endfor %}
-    </ul>
-{% endif %}
 
 
 <div class="title">
-            <h1>Search by tags</h1>
+            <h3>Search by tags</h3>
         </div>
             <form method="post" action="{{ url_for('search_tags') }}">
                 <label for="words">Please enter words:</label>
@@ -118,7 +404,7 @@
             </form>
 
 <div class="title">
-            <h1>Tags Recommandation</h1>
+            <h3>Tags Recommandation</h3>
         </div>
             <form method="post" action="{{ url_for('tags_recom') }}">
                 <label for="tags">Please enter tags:</label>
@@ -132,10 +418,5 @@
 {% else %}
   <p> Go to <a href='/profile'>profile?</a></p>
 {% endif %}
-
-<ul>
-<li><a href='/upload'>Modify photos and albums</a> </li> 
-<li><a href='/logout'>Logout</a></li>
-<li><a href='/friend'>Add friend</a></li>
-<li><a href='/'>Home</a></li>
-</ul>
+-->
+<body>

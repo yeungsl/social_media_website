@@ -1,7 +1,141 @@
 <!-- author ben lawson balawson@bu.edu -->
 <head>
     <title>Create an account!</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="https://unpkg.com/masonry-layout@4.1/dist/masonry.pkgd.min.js"></script>
+    <link href='https://fonts.googleapis.com/css?family=Roboto:300,400,700' rel='stylesheet' type='text/css'>
+     <style type="text/css">
+    body{
+      background-color: #060606;
+    }
+    </style>
 </head>
+<body>
+    <nav class="navbar navbar-inverse">
+  <div class="container-fluid">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-2">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="/">PhotoShare</a>
+    </div>
+
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-2">
+      <ul class="nav navbar-nav">
+        <li><a href="/profile">Profile</a></li>
+        <li class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Add<span class="caret"></span></a>
+          <ul class="dropdown-menu" role="menu">
+            <li><a href="/friend">Add Friend</a></li>
+            <li><a href="/upload">Edit Albums</a></li>
+            <li><a href="/register">Register</a></li>
+          </ul>
+        </li>
+      </ul>
+      <form class="navbar-form navbar-left" role="search" method="post" action="{{ url_for('search_tags') }}">
+        <div class="form-group">
+          <input type="text" class="form-control" placeholder="Search by Tags" name="words">
+        </div>
+        <button type="submit" class="btn btn-default">Search</button>
+      </form>
+      <form class="navbar-form navbar-left" role="search" method="post" action="{{ url_for('tags_recom') }}">
+        <div class="form-group">
+          <input type="text" class="form-control" placeholder="Related Tags" name="tags">
+        </div>
+        <button type="submit" class="btn btn-default">Recommend</button>
+      </form>
+      <ul class="nav navbar-nav navbar-right">
+        <li><a href="/logout">Log out</a></li>
+        <li><a href="/login">Log in</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<blockquote>
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        {% for messages in messages%}
+            <p tyle="color: #95a5a6">{{ messages }}</p>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+</blockquote>
+
+<form class="form-horizontal" method="post" action="{{ url_for('register_user') }}">
+  <fieldset>
+    <legend style="color:#fff;">Register</legend>
+    <div class="form-group">
+      <label for="inputEmail" class="col-lg-2 control-label">Email</label>
+      <div class="col-lg-10">
+        <input type="text" class="form-control"  name="email" placeholder="Email">
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="password" class="col-lg-2 control-label">Password</label>
+      <div class="col-lg-10">
+        <input type="password" class="form-control" name="password" placeholder="Password">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="fname" class="col-lg-2 control-label">First name</label>
+      <div class="col-lg-10">
+        <input type="text" class="form-control" name="fname" placeholder="First name">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="lname" class="col-lg-2 control-label">Last name</label>
+      <div class="col-lg-10">
+        <input type="text" class="form-control" name="lname" placeholder="Last name">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="bday" class="col-lg-2 control-label">Date of Birth</label>
+      <div class="col-lg-10">
+        <input type="date" class="form-control" name="bday" placeholder="Date-of-birth">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="ht" class="col-lg-2 control-label">Hometown</label>
+      <div class="col-lg-10">
+        <input type="text" class="form-control" name="ht" placeholder="Hometown">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="gender" class="col-lg-2 control-label">Gender</label>
+      <div class="col-lg-10">
+        <select class="form-control" name="gender">
+          <option>Male</option>
+          <option>Female</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <div class="col-lg-10 col-lg-offset-2">
+        <button type="reset" class="btn btn-default">Cancel</button>
+        <button type="submit" class="btn btn-primary">Register</button>
+      </div>
+    </div>
+  </fieldset>
+</form>
+
+
+
+</body>
+<!--
 {% with messages = get_flashed_messages() %}
     {% if messages %}
     <h1> Email already in use! Use another one or <a href="/login">login</a></h1>
@@ -33,3 +167,4 @@
          </div>
     </body>
 <a href='/'>Home</a>
+-->

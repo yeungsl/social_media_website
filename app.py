@@ -20,11 +20,12 @@ import re
 #for image uploading
 from werkzeug import secure_filename
 import os, base64
+from operator import itemgetter
 
 mysql = MySQL()
 app = Flask(__name__)
 app.secret_key = 'super secret string'  # Change this!
-upload_folder = '/Users/yeungSL/Desktop/social_media_website/templates/uploads' #store all the picture uploaded into his directory on the file system
+upload_folder = '/Users/younith/Desktop/social_media_website/templates/uploads' #store all the picture uploaded into his directory on the file system
 
 #These will need to be changed according to your creditionals
 app.config['MYSQL_DATABASE_USER'] = 'root'
@@ -140,7 +141,6 @@ def register_user():
 	cursor = conn.cursor()
 	test1 =  isEmailUnique(email)
 	test2 = qualify(gender)
-	print test2 
 	if test1 and test2:
 		print cursor.execute("INSERT INTO Users (first_name, last_name, date_of_birth, email, hometown, gender, password) VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}')".format(fname, lname, bday, email, ht, gender, password))
 		conn.commit()
@@ -151,7 +151,7 @@ def register_user():
 		return render_template('hello.html', name=fname, message='Account Created!')
 	else:
 		print "couldn't find all tokens"
-		flask.flash('True')
+		flask.flash('Already registered')
 		return flask.redirect(flask.url_for('register'))
 
 def getUsersPhotos(aid):
@@ -180,7 +180,7 @@ def isEmailUnique(email):
 		return True
 
 def qualify(gender):
-	if (gender == 'male' or gender == 'female'):
+	if (gender == 'Male' or gender == 'Female'):
 		return True
 	else:
 		return False
@@ -216,7 +216,8 @@ def getActivelist():
 			if p[0] == c[0]:
 				tcount += c[1]
 		alist.append([p[0], tcount])
-	return alist
+	slist = sorted(alist, key=itemgetter(1), reverse=True)
+	return slist
 
 def getAid(name):
 	cursor = conn.cursor()
@@ -227,6 +228,8 @@ def verifyAlbums(aname, cdate):
 	cursor = conn.cursor()
 	cursor.execute("SELECT album_id, owner_id FROM albums WHERE name = '{0}' AND date_created = '{1}'".format(aname, cdate))
 	m = cursor.fetchall()[0]
+	print m
+	print getUserIdFromEmail(flask_login.current_user.id)
 	if m[1] != getUserIdFromEmail(flask_login.current_user.id):
 		m = "cannnot delete album from other people"
 		return False, m
@@ -235,6 +238,7 @@ def verifyAlbums(aname, cdate):
 	else:
 		m = "There is no such album in the list"
 		return False, m
+
 
 def privateTags(email):
 	cursor = conn.cursor()
@@ -357,15 +361,15 @@ def visit(email):
 	p = getUsersPhotosFromUid(getUserIdFromEmail(email))
 	pclist = getCLfromPic(p)
 	print pclist
-	info = getUserinfoFromEmail(flask_login.current_user.id)[0]
 	try:
+		info = getUserinfoFromEmail(flask_login.current_user.id)[0]
 		uemail = flask_login.current_user.id
 		if email == uemail:
 			return flask.redirect('/profile')
 		else:
 			return render_template('hello.html', name=info, infos=uinfo, num=fnum, list=flist, anum=anum, alist=alist, pclist=pclist, actlist=activeList, tags=tags, photos=p, message="Here's the profile")
 	except:
-		return render_template('hello.html', name=info, infos=uinfo, num=fnum, list=flist, anum=anum, alist=alist, pclist=pclist, actlist=activeList, tags=tags, photos=p, message="Here's the profile")
+		return render_template('hello.html', infos=uinfo, num=fnum, list=flist, anum=anum, alist=alist, pclist=pclist, actlist=activeList, tags=tags, photos=p, message="Here's the profile")
 
 
 
@@ -486,6 +490,7 @@ def delete_albums():
 		cursor = conn.cursor()
 		for photo in photos:
 			print photo[1]
+			delete_clt(pid)
 			cursor.execute("DELETE FROM pictures WHERE picture_id = '{0}'".format(photo[1]))
 		cursor.execute("DELETE FROM albums WHERE album_id = '{0}'".format(message[0]))
 		conn.commit()
@@ -526,44 +531,65 @@ def tags_recom():
 	print ws
 	taglist = []
 	for t in gatherTags():
-		taglist += [t[0]]
+		taglist += t
 	T = []
 	for x in ws:
 		print x 
+		print taglist
 		if x in taglist:
 			T += [x]
 	print T
+	if T == []:
+		return render_template('hello.html', message='Recommanded tags', tags=taglist)
 	tags = tag_recommendation(T)
 	return render_template('hello.html', message='Recommanded tags', tags=tags)
 
 
-@app.route('/delete_pictures/<pid>', methods=['POST'])
+@app.route('/delete_pictures/<pid>')
 @flask_login.login_required
 def delete_pictures(pid):
 	print pid
+	if verifyPic(pid):
+		return render_template('hello.html', message='cannot delete picture of others')
 	info = getUserinfoFromEmail(flask_login.current_user.id)[0]
+	delete_clt(pid)
 	cursor = conn.cursor()
 	cursor.execute("DELETE FROM pictures WHERE picture_id = '{0}'".format(pid))
 	conn.commit()
 	return render_template('hello.html', name=info, message='The picture is deleted')
 
-@app.route('/show_tags/<d>', methods=['POST'])
+def delete_clt(pid):
+	cursor = conn.cursor()
+	cursor.execute("DELETE FROM comments WHERE picture_id = '{0}'".format(pid))
+	cursor.execute("DELETE FROM tags WHERE picture_id = '{0}'".format(pid))
+	cursor.execute("DELETE FROM likes WHERE picture_id = '{0}'".format(pid))
+	conn.commit()
+	return
+
+def verifyPic(pid):
+	cursor = conn.cursor()
+	if cursor.execute("SELECT owner_id FROM albums A, pictures P WHERE P.picture_id = '{0}' AND A.owner_id = '{1}' AND P.album_id = A.album_id ".format(pid, getUserIdFromEmail(flask_login.current_user.id))):
+		return False
+	else:
+		return True
+
+@app.route('/show_tags/<d>')
 def show_tags(d):
 	print d 
 	p = getTagsPhotos(d)
 	pclist = getCLfromPic(p)	
 	return render_template('hello.html', message='All picture in this tag', photos=p, pclist=pclist)
 
-@app.route('/show_tags_private/<d>', methods=['POST'])
+@app.route('/show_tags_private/<d>')
+@flask_login.login_required
 def show_tags_private(d):
 	print d 
 	info = getUserinfoFromEmail(flask_login.current_user.id)
 	p = getTagsPhotosPrivate(d, getUserIdFromEmail(flask_login.current_user.id))
 	pclist = getCLfromPic(p)
-	return render_template('hello.html', name=info[0], message='All picture in this tag', photos=p, pclist=pclist)
+	return render_template('hello.html', name=info[0], message='All picture in this tag', photos=p, pclist=pclist, private=1)
 
 @app.route('/send/<filename>')
-@flask_login.login_required
 def send_file(filename):
 	return flask.send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 #upload page for album
@@ -598,7 +624,7 @@ def addCommentSelf(uid, pid):
 		return False
 
 
-@app.route('/like_pictures/<pid>', methods=['POST'])
+@app.route('/like_pictures/<pid>')
 def like_pictures(pid):
 	cursor = conn.cursor()
 	try:
